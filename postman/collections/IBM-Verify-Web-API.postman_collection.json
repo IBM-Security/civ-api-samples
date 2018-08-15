@@ -1,0 +1,1374 @@
+{
+	"info": {
+		"_postman_id": "8683fd8c-7913-43ed-84be-8915995e2b9c",
+		"name": "IBM-Verify-Web-API",
+		"description": "Web client requests to demonstrate IBM Verify web API enabling registration, enrollment, and runtime mobile notifications and IBM Verify based 2FA",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Setup prerequisites",
+			"item": [
+				{
+					"name": "Authenticate as a tenant admin (browser style login)",
+					"item": [
+						{
+							"name": "establish a login context",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "98621e57-907b-4c0a-b207-a277351b8b44",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"expect response body to exist\", function() {",
+											"   pm.response.to.have.body();",
+											"});",
+											"",
+											"$ = cheerio.load(responseBody);",
+											"let path = $('body').attr('action');",
+											"let key = 'StateId=';",
+											"let stateId = path.substr(path.indexOf(key) + key.length);",
+											"",
+											"pm.test(\"expect response body to contain attribute '\"+key+\"'\", function() {",
+											"   pm.expect(stateId).to.not.be.empty;",
+											"});",
+											"",
+											"pm.environment.set('state_id', stateId);",
+											"pm.environment.unset('target');",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "97570a90-d28c-4011-a0a5-51e7f339d8dd",
+										"type": "text/javascript",
+										"exec": [
+											"let tenant = pm.environment.get('tenant');",
+											"pm.environment.set('target', encodeURIComponent('https://'+tenant+'/ui'));",
+											"",
+											"pm.environment.unset('state_id');",
+											"pm.environment.unset('jsessionid');",
+											"pm.environment.unset(pm.environment.get('username') + '.token');",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{scheme}}://{{tenant}}/authsvc/mtfim/sps/authsvc?PolicyId=urn:ibm:security:authentication:asf:basicldapuser&Target={{target}}",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{tenant}}"
+									],
+									"path": [
+										"authsvc",
+										"mtfim",
+										"sps",
+										"authsvc"
+									],
+									"query": [
+										{
+											"key": "PolicyId",
+											"value": "urn:ibm:security:authentication:asf:basicldapuser"
+										},
+										{
+											"key": "Target",
+											"value": "{{target}}"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "complete user login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "e533d2df-0a6b-4ac3-b915-146747b6b703",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"expect response body to exist\", function() {",
+											"   pm.response.to.have.body();",
+											"});",
+											"",
+											"let key = 'authKey: \"';",
+											"$ = cheerio.load(responseBody);",
+											"let script = $('script').text();",
+											"let start = script.indexOf(key) + key.length;",
+											"let authKey = script.substring(start, script.indexOf('\"', start));",
+											"",
+											"pm.test(\"expect response body to contain attribute '\"+key+\"'\", function() {",
+											"   pm.expect(authKey).to.not.be.empty;",
+											"});",
+											"",
+											"let username = pm.variables.get('username');",
+											"pm.environment.set(username + '.token', authKey);",
+											"",
+											"pm.environment.unset('state_id');",
+											"pm.environment.unset('jsessionid');",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "0636d161-3b16-471f-a369-7d4f82744200",
+										"type": "text/javascript",
+										"exec": [
+											"let username = pm.variables.get('username');",
+											"pm.environment.unset(username + '.token');"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/x-www-form-urlencoded"
+									},
+									{
+										"key": "Cookie",
+										"value": "JSESSIONID={{jsessionid}}",
+										"disabled": true
+									},
+									{
+										"key": "Host",
+										"value": "{{tenant}}"
+									}
+								],
+								"body": {
+									"mode": "urlencoded",
+									"urlencoded": [
+										{
+											"key": "username",
+											"type": "text",
+											"value": "{{username}}"
+										},
+										{
+											"key": "password",
+											"type": "text",
+											"value": "{{password}}"
+										},
+										{
+											"key": "operation",
+											"type": "text",
+											"value": "verify"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{scheme}}://{{tenant}}/authsvc/mtfim/sps/authsvc?StateId={{state_id}}",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{tenant}}"
+									],
+									"path": [
+										"authsvc",
+										"mtfim",
+										"sps",
+										"authsvc"
+									],
+									"query": [
+										{
+											"key": "StateId",
+											"value": "{{state_id}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "05c90556-674a-4e60-84a6-dd8152ab13e8",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "9fabe811-bace-42cc-aa48-19e404abcd3b",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Create an API client",
+					"item": [
+						{
+							"name": "create API client",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d9b3853a-dcf5-4974-b12e-4d0932e7c923",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"expect status code to be 201\", function() {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"pm.test(\"location response header is present\", function () {",
+											"    pm.response.to.have.header(\"location\");",
+											"});",
+											"",
+											"",
+											"let clientUri = postman.getResponseHeader('location');",
+											"",
+											"pm.environment.set('clientUri', clientUri);",
+											"",
+											"",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "e33357d5-8f40-46ff-b794-1dd2b4f51e24",
+										"type": "text/javascript",
+										"exec": [
+											"pm.environment.unset('clientUri');"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"entitlements\": [\n    {{entitlements}}\n  ],\n  \"enabled\": true,\n  \"clientName\": \"User Guide API Client\"\n}"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{tenant}}/v1.0/apiclients",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{tenant}}"
+									],
+									"path": [
+										"v1.0",
+										"apiclients"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "get API client",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "45ea4133-2940-4d31-883d-5e6cc5c401e0",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"let jsonData = {};",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"pm.test(\"expect attribute 'id' to exist\", function () {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"});",
+											"",
+											"pm.test(\"expect attribute 'clientSecret' to exist\", function () {",
+											"    pm.expect(jsonData.clientSecret).to.exist;",
+											"});",
+											"",
+											"if (jsonData.id !== undefined) {",
+											"    pm.environment.set('api.client.id', jsonData.id);",
+											"}",
+											"",
+											"if (jsonData.id !== undefined) {",
+											"    pm.environment.set('api.client.secret', jsonData.clientSecret);",
+											"}",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"entitlements\": [\n    {{entitlements}}\n  ],\n  \"enabled\": true,\n  \"clientName\": \"Demo Client\"\n}"
+								},
+								"url": {
+									"raw": "{{clientUri}}",
+									"host": [
+										"{{clientUri}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Create an API client that maybe used invoke IBM Verify configuration and runtime web APIs",
+					"auth": {
+						"type": "bearer",
+						"bearer": [
+							{
+								"key": "token",
+								"value": "{{{{username}}.token}}",
+								"type": "string"
+							}
+						]
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "c9b5712e-bc0c-44b9-a90b-ee04804ef8c0",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "2b2ac483-9551-4163-ae5d-0aa4e762d78a",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Create an IBM Verify end user",
+					"item": [
+						{
+							"name": "Create a user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "73d7ec97-7245-46ec-be4f-22363d8f44f0",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"expect status code to be 201\", function() {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"let jsonData = {};",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"pm.test(\"expect attribute 'id' to exist\", function () {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"});",
+											"",
+											"if (jsonData.id !== undefined) {",
+											"    pm.environment.set('verify.user.id', jsonData.id);",
+											"}",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/scim+json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/scim+json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userName\": \"userguide_user\",\n  \"phoneNumbers\": [\n    {\n      \"type\": \"work\",\n      \"value\": \"1234567\"\n    }\n  ],\n  \"displayName\": \"User Guide User\",\n  \"name\": {\n    \"givenName\": \"UserGuide\",\n    \"familyName\": \"User\"\n  },\n  \"urn:ietf:params:scim:schemas:extension:ibm:2.0:Notification\": {\n    \"notifyType\": \"EMAIL\",\n    \"notifyPassword\": false\n  },\n  \"active\": true,\n  \"password\": \"Password0\",\n  \"emails\": [\n    {\n      \"type\": \"work\",\n      \"value\": \"userguideuser@noreply.com\"\n    }\n  ],\n  \"schemas\": [\n    \"urn:ietf:params:scim:schemas:core:2.0:User\",\n    \"urn:ietf:params:scim:schemas:extension:ibm:2.0:Notification\"\n  ]\n}"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{tenant}}/v2.0/Users",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{tenant}}"
+									],
+									"path": [
+										"v2.0",
+										"Users"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"auth": {
+						"type": "bearer",
+						"bearer": [
+							{
+								"key": "token",
+								"value": "{{{{username}}.token}}",
+								"type": "string"
+							}
+						]
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "76ad29aa-0e3a-4055-9211-7f7fb5a20131",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "a750e6c8-e10e-44b7-b52a-349a0eccfaa9",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Oauth token requests",
+					"item": [
+						{
+							"name": "Get a new API access token",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "9ab264b1-7073-4b7e-b6c5-43aa5105f5df",
+										"type": "text/javascript",
+										"exec": [
+											"pm.environment.unset('api.client.token');",
+											"",
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"id": "75e264bb-df1b-451c-ad52-a2648316bb5e",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"var jsonData;",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"pm.test(\"Expect attribute 'access_token' to exist\", function () {",
+											"    pm.expect(jsonData.access_token).to.exist;",
+											"});",
+											"",
+											"pm.environment.set('api.client.token', jsonData.access_token);",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/x-www-form-urlencoded"
+									}
+								],
+								"body": {
+									"mode": "urlencoded",
+									"urlencoded": [
+										{
+											"key": "grant_type",
+											"type": "text",
+											"value": "client_credentials"
+										},
+										{
+											"key": "client_id",
+											"type": "text",
+											"value": "{{api.client.id}}"
+										},
+										{
+											"key": "client_secret",
+											"value": "{{api.client.secret}}",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/endpoint/default/token",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"endpoint",
+										"default",
+										"token"
+									]
+								},
+								"description": "As Alice, use my preassigned API keys to request a bearer token."
+							},
+							"response": []
+						}
+					],
+					"auth": {
+						"type": "noauth"
+					},
+					"_postman_isSubFolder": true
+				}
+			],
+			"description": "Create an API client that we can then use to perform web API requests to demonstrate IBM Verify web APIs.",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "8353530b-7fa8-4961-bff2-b5ead49ac51a",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "5ec1021c-e7a8-49a6-b62a-38c51f30acea",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Runtime Examples",
+			"item": [
+				{
+					"name": "IBM Verify Authenticator Configuration",
+					"item": [
+						{
+							"name": "Create Authenticator configuration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "15ccaa3a-d3b9-4423-a0d6-a6627298cfb9",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 201\", function() {",
+											"    pm.response.to.have.status(201);",
+											"});",
+											"",
+											"var jsonData;",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"pm.test(\"Expect attribute 'id' to exist\", function () {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"});",
+											"",
+											"pm.environment.set('verify.client.id', jsonData.id);",
+											"",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"authorizationCodeLifetime\": 600,\r\n  \"enabled\": true,\r\n  \"refreshTokenLifetime\": 2109600,\r\n  \"name\" : \"VerifyForUserGuide\",\r\n  \"accessTokenLifetime\": 3600\r\n}\r\n"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authenticators/clients",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authenticators",
+										"clients"
+									]
+								},
+								"description": "Alices App, as Alice creates an authenticator client for IBM Verify."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Authenticator configuration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "8a3e2fa4-96cd-4025-8c10-b92615279c78",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"authorizationCodeLifetime\": 600,\r\n  \"enabled\": true,\r\n  \"refreshTokenLifetime\": 21600,\r\n  \"name\" : \"VerifyForUserGuide\",\r\n  \"accessTokenLifetime\": 3600\r\n}\r\n"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authenticators/clients/{{verify.client.id}}",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authenticators",
+										"clients",
+										"{{verify.client.id}}"
+									]
+								},
+								"description": "Alices App, as Alice creates an authenticator client for IBM Verify."
+							},
+							"response": []
+						},
+						{
+							"name": "Update Authenticator configuration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "d0f0e295-e35e-42c5-9eab-60e70f92189d",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 204\", function() {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"authorizationCodeLifetime\": 60,\r\n  \"enabled\": true,\r\n  \"refreshTokenLifetime\": 1209600,\r\n  \"name\" : \"VerifyForUserGuide\",\r\n  \"accessTokenLifetime\": 3600\r\n}\r\n"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authenticators/clients/{{verify.client.id}}",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authenticators",
+										"clients",
+										"{{verify.client.id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "f0bc994c-7555-4104-8637-6ed8dfda435e",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "b75e42c0-f428-42b4-b375-143e508a1709",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "IBM Verify authenticator registrations and authn factor enrollments",
+					"item": [
+						{
+							"name": "Initiate IBM Verify registration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "46119480-193a-4400-9a8b-aaa2b998d11b",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "image/png"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"owner\": \"{{verify.user.id}}\",\r\n  \"clientId\": \"{{verify.client.id}}\",\r\n  \"accountName\": \"User Guide Demo Account\"\r\n}\r\n"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authenticators/initiation",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authenticators",
+										"initiation"
+									]
+								},
+								"description": "Alices App, as Alice, initialte an authenticator registration for IBM Verify."
+							},
+							"response": []
+						},
+						{
+							"name": "Get all IBM Verify registrations",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "bc0085c4-3180-438c-afda-b27dd1272818",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"var jsonData;",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"pm.test(\"Expect attribute 'authenticators' to exist\", function () {",
+											"    pm.expect(jsonData.authenticators).to.exist;",
+											"});",
+											"",
+											"let authenticator = jsonData.authenticators[0];",
+											"if (authenticator !== undefined) {",
+											"    pm.environment.set('verify.registration.id', authenticator.id);",
+											"}",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "165d68d9-79ba-41b9-aaf2-9124f6492d27",
+										"type": "text/javascript",
+										"exec": [
+											"pm.environment.unset('verify.registration.id');"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"owner\": \"{{verify.user.id}}\",\r\n  \"clientId\": \"{{verify.client.id}}\",\r\n  \"accountName\": \"User Guide Demo Account\"\r\n}\r\n"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authenticators/",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authenticators",
+										""
+									]
+								},
+								"description": "Alices App, as Alice, initialte an authenticator registration for IBM Verify."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete an IBM Verify registration",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "c27aadf5-8999-4810-ae5b-843e8c221641",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 204\", function() {",
+											"    pm.response.to.have.status(204);",
+											"});",
+											"",
+											"pm.environment.unset('verify.registration.id');",
+											"pm.environment.unset('verify.verification.trxn.id');",
+											"pm.environment.unset('verify.userPresence.factor.id');",
+											"pm.environment.unset('verify.userPresence.authnor.uri');",
+											"pm.environment.unset('verify.deviceBiometric.factor.id');",
+											"pm.environment.unset('verify.deviceBiometric.authnor.uri');",
+											"",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "dc1f206b-821a-4e19-8930-8c9fd97566ec",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authenticators/{{verify.registration.id}}",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authenticators",
+										"{{verify.registration.id}}"
+									]
+								},
+								"description": "Alices App, as Alice, initialte an authenticator registration for IBM Verify."
+							},
+							"response": []
+						},
+						{
+							"name": "Get all IBM Verify signature factor enrollments",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "0ca9a39a-3fd5-4b55-8e44-24d8ae521c4f",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"});",
+											"",
+											"var jsonData;",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"",
+											"pm.test(\"Expect attribute 'signatures' to exist\", function () {",
+											"    pm.expect(jsonData.signatures).to.exist;",
+											"});",
+											"",
+											"let signatures = jsonData.signatures;",
+											"if (signatures !== undefined) {",
+											"    let userPresenceSig = signatures.find(function(signature) {",
+											"        if (signature.subType === 'userPresence' && ",
+											"            signature.attributes.authenticatorId === pm.environment.get('verify.registration.id')) {",
+											"            return signature;",
+											"        }",
+											"    });",
+											"    let deviceBiometricSig = signatures.find(function(signature) {",
+											"        if (signature.subType === 'fingerprint' && ",
+											"            signature.attributes.authenticatorId === pm.environment.get('verify.registration.id')) {",
+											"            return signature;",
+											"        }",
+											"    });",
+											"    ",
+											"    if (userPresenceSig !== undefined) {",
+											"        pm.environment.set('verify.userPresence.factor.id', userPresenceSig.id);",
+											"        pm.environment.set('verify.userPresence.authnor.uri', userPresenceSig.attributes.authenticatorUri);",
+											"    }",
+											"    ",
+											"    if (deviceBiometricSig !== undefined) {",
+											"        pm.environment.set('verify.deviceBiometric.factor.id', deviceBiometricSig.id);",
+											"        pm.environment.set('verify.deviceBiometric.authnor.uri', deviceBiometricSig.attributes.authenticatorUri);",
+											"    }",
+											"}",
+											""
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"id": "9cb5b634-7e75-4b1f-bf84-152188cc36d6",
+										"type": "text/javascript",
+										"exec": [
+											"pm.environment.unset('verify.userPresence.factor.id');",
+											"pm.environment.unset('verify.userPresence.authnor.uri');",
+											"pm.environment.unset('verify.deviceBiometric.factor.id');",
+											"pm.environment.unset('verify.deviceBiometric.authnor.uri');",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n  \"owner\": \"{{verify.user.id}}\",\r\n  \"clientId\": \"{{verify.client.id}}\",\r\n  \"accountName\": \"User Guide Demo Account\"\r\n}\r\n"
+								},
+								"url": {
+									"raw": "{{scheme}}://{{hostname}}/v1.0/authnmethods/signatures",
+									"protocol": "{{scheme}}",
+									"host": [
+										"{{hostname}}"
+									],
+									"path": [
+										"v1.0",
+										"authnmethods",
+										"signatures"
+									]
+								},
+								"description": "Alices App, as Alice, initialte an authenticator registration for IBM Verify."
+							},
+							"response": []
+						}
+					],
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "22c5659a-0801-412a-b0d1-c073c2f47ff9",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"id": "133a39a4-8e2a-4d68-9d24-8805e45b765b",
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"_postman_isSubFolder": true
+				},
+				{
+					"name": "Runtime authentications, verifications and push notifications",
+					"item": [
+						{
+							"name": "Initate user presence authentication ",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "037f259f-9b4b-47e8-aad1-88feca80bc2c",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 202\", function() {",
+											"    pm.response.to.have.status(202);",
+											"});",
+											"",
+											"var jsonData;",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"",
+											"pm.test(\"Expect attribute 'id' to exist\", function () {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"});",
+											"",
+											"pm.environment.set('verify.verification.trxn.id', jsonData.id);",
+											"",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"expiresIn\": 600,\n  \"pushNotification\": {\n    \"sound\": \"default\",\n    \"message\": \"You have a pending authentication challenge\",\n    \"send\": true,\n    \"title\": \"User Guide Example\"\n  },\n  \"authenticationMethods\": [\n    {\n      \"methodType\": \"signature\",\n      \"id\": \"{{verify.userPresence.factor.id}}\"\n    }\n  ],\n  \"logic\": \"OR\",\n  \"transactionData\": {\n    \"additionalData\": [\n      {\n        \"name\": \"AdditionalData\",\n        \"value\": \"This is some additional data.\"\n      }\n    ],\n    \"message\": \"You have a pending authentication challenge from the user guide\",\n    \"originIpAddress\": \"192.168.222.222\",\n    \"originUserAgent\": \"Postman\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{verify.userPresence.authnor.uri}}/verifications",
+									"host": [
+										"{{verify.userPresence.authnor.uri}}"
+									],
+									"path": [
+										"verifications"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Initate device biometric authentication",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "464a077d-abde-4894-bc70-40c2c9d41eab",
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Expect status code to be 202\", function() {",
+											"    pm.response.to.have.status(202);",
+											"});",
+											"",
+											"var jsonData;",
+											"try {",
+											"    jsonData = pm.response.json();",
+											"} catch(err) {",
+											"    console.log(err);",
+											"}",
+											"",
+											"",
+											"pm.test(\"Expect attribute 'id' to exist\", function () {",
+											"    pm.expect(jsonData.id).to.exist;",
+											"});",
+											"",
+											"pm.environment.set('verify.verification.trxn.id', jsonData.id);",
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"expiresIn\": 600,\n  \"pushNotification\": {\n    \"sound\": \"default\",\n    \"message\": \"You have a pending authentication challenge\",\n    \"send\": true,\n    \"title\": \"User Guide Example\"\n  },\n  \"authenticationMethods\": [\n    {\n      \"methodType\": \"signature\",\n      \"id\": \"{{verify.deviceBiometric.factor.id}}\"\n    }\n  ],\n  \"logic\": \"OR\",\n  \"transactionData\": {\n    \"additionalData\": [\n      {\n        \"name\": \"AdditionalData\",\n        \"value\": \"This is some additional data.\"\n      }\n    ],\n    \"message\": \"You have a pending authentication challenge from the user guide\",\n    \"originIpAddress\": \"192.168.222.222\",\n    \"originUserAgent\": \"Postman\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{verify.deviceBiometric.authnor.uri}}/verifications",
+									"host": [
+										"{{verify.deviceBiometric.authnor.uri}}"
+									],
+									"path": [
+										"verifications"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get all verification transactions for an authenticator",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "6e20277a-1b76-4a8e-b88d-b525beb2f469",
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"expiresIn\": 120,\n  \"pushNotification\": {\n    \"sound\": \"default\",\n    \"message\": \"You have a pending authentication challenge\",\n    \"send\": true,\n    \"title\": \"User Guide Example\"\n  },\n  \"authenticationMethods\": [\n    {\n      \"methodType\": \"signature\",\n      \"id\": \"{{verify.userPresence.factor.id}}\"\n    }\n  ],\n  \"logic\": \"OR\",\n  \"transactionData\": {\n    \"additionalData\": [\n      {\n        \"name\": \"AdditionalData\",\n        \"value\": \"This is some additional data.\"\n      }\n    ],\n    \"message\": \"You have a pending authentication challenge from the user guide\",\n    \"originIpAddress\": \"192.168.222.222\",\n    \"originUserAgent\": \"Postman\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{verify.userPresence.authnor.uri}}/verifications",
+									"host": [
+										"{{verify.userPresence.authnor.uri}}"
+									],
+									"path": [
+										"verifications"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"_postman_isSubFolder": true
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{api.client.token}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "d8ec7d4c-38d8-45a6-a7ac-ed7e1289a10e",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "124576ad-c86a-4943-8488-e377279ebebe",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "b80df922-c4b0-4b5a-b7c9-15c6ce7238a4",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "10d35abf-365f-4187-afd3-fb6d0a545297",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
